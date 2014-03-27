@@ -57,6 +57,7 @@ module CounterCulture
         options[:exclude] = options[:exclude].try(:map) {|x| x.is_a?(Enumerable) ? x : [x] }
         options[:only] = [options[:only]] if options[:only] && !options[:only].is_a?(Enumerable)
         options[:only] = options[:only].try(:map) {|x| x.is_a?(Enumerable) ? x : [x] }
+        verbose = options[:verbose] || false
 
         fixed = []
         @after_commit_counter_cache.each do |hash|
@@ -109,9 +110,11 @@ module CounterCulture
 
             # iterate in batches; otherwise we might run out of memory when there's a lot of
             # instances and we try to load all their counts at once
+            puts "Setting the counter caches:" if verbose
             start = 0
             batch_size = options[:batch_size] || 1000
             while (records = klass.reorder(full_primary_key(klass) + " ASC").offset(start).limit(batch_size)).any?
+              puts "For #{batch_size} records starting from #{start}." if verbose
               # collect the counts for this batch in an id => count hash; this saves time relative
               # to running one query per record
               counts = counts_query.reorder(full_primary_key(klass) + " ASC").offset(start).limit(batch_size).group(full_primary_key(klass)).inject({}){|memo, model| memo[model.id] = model.count.to_i; memo}
@@ -135,6 +138,7 @@ module CounterCulture
 
               start += batch_size
             end
+            puts "Done!" if verbose
           end
         end
 
